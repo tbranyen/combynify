@@ -1,5 +1,5 @@
 var fs = require('fs');
-var path = require('path');
+var { join, resolve, extname } = require('path');
 var through = require('through2');
 var combyne = require('combyne');
 var visitCombyne = require('visit-combyne');
@@ -48,18 +48,18 @@ var processTemplate = function(templateSource, settings, callback) {
 
   filters.forEach(function(filterName) {
     // Register the exported function.
-    template._filters[filterName] = path.join(root, filtersDir, filterName);
+    template._filters[filterName] = join(root, filtersDir, filterName);
   });
 
   // Map all partials to functions.
   partials.forEach(function(name) {
-    template._partials[name] = path.resolve(path.join(root, name + extension));
+    template._partials[name] = resolve(join(root, name + extension));
   });
 
   // Map all extend to functions.
   extend.forEach(function(render) {
     var name = render.template;
-    var superTemplate = path.resolve(path.join(root, name + extension));
+    var superTemplate = resolve(join(root, name + extension));
 
     // Pre-cache this template.
     extendsCache[render.partial] = true;
@@ -72,11 +72,13 @@ var processTemplate = function(templateSource, settings, callback) {
   var lines = template.source.split('\n');
 
   partials = Object.keys(template._partials).map(function(name) {
-    return '"' + name + '": require("' + template._partials[name] + '")';
+    const path = template._partials[name].replace(/\\/ig, '/');
+    return '"' + name + '": require("' + path + '")';
   });
 
   filters = Object.keys(template._filters).map(function(name) {
-    return '"' + name + '": require("' + template._filters[name] + '")';
+    const path = template._filters[name].replace(/\\/ig, '/');
+    return '"' + name + '": require("' + path + '")';
   });
 
   // This replaces the partials and filters inline.
@@ -94,7 +96,7 @@ var processTemplate = function(templateSource, settings, callback) {
 };
 
 function combynify(file, settings) {
-  var fileExtension = path.extname(file);
+  var fileExtension = extname(file);
 
   if (settings.extension) {
     if (fileExtension !== settings.extension) {
@@ -117,7 +119,7 @@ function combynify(file, settings) {
   // Mimic how the actual Combyne stores.
   settings._filters = {};
   settings._partials = {};
-  settings.root = settings.root || path.join(process.cwd(), 'views');
+  settings.root = settings.root || join(process.cwd(), 'views');
   settings._filepath = file;
 
   var chunks = [];
